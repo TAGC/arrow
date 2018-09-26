@@ -1,11 +1,23 @@
 package arrow.effects
 
-import arrow.core.*
+import arrow.core.Either
+import arrow.core.Left
+import arrow.core.Right
+import arrow.core.Try
+import arrow.core.andThen
+import arrow.core.identity
 import arrow.effects.typeclasses.Disposable
 import arrow.effects.typeclasses.ExitCase
 import arrow.effects.typeclasses.Proc
 import arrow.higherkind
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.DefaultDispatcher
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import kotlin.coroutines.CoroutineContext
 
 fun <A> Deferred<A>.k(): DeferredK<A> =
