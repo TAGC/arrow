@@ -20,8 +20,6 @@ import arrow.data.fix
 import arrow.data.functor
 import arrow.data.monad
 import arrow.deprecation.ExtensionsDSLDeprecated
-import arrow.effects.typeclasses.Bracket
-import arrow.effects.typeclasses.ExitCase
 import arrow.extension
 import arrow.typeclasses.Applicative
 import arrow.typeclasses.ApplicativeError
