@@ -6,21 +6,21 @@ import arrow.core.ForId
 import arrow.core.Id
 import arrow.core.Tuple2
 import arrow.core.andThen
-import arrow.core.applicative
-import arrow.core.functor
-import arrow.core.monad
 import arrow.data.ForKleisli
 import arrow.data.Kleisli
 import arrow.data.KleisliOf
 import arrow.data.KleisliPartialOf
 import arrow.data.ReaderApi
 import arrow.data.ReaderPartialOf
-import arrow.data.applicative
 import arrow.data.fix
-import arrow.data.functor
-import arrow.data.monad
 import arrow.deprecation.ExtensionsDSLDeprecated
 import arrow.extension
+import arrow.instances.id.applicative.applicative
+import arrow.instances.id.functor.functor
+import arrow.instances.id.monad.monad
+import arrow.instances.kleisli.applicative.applicative
+import arrow.instances.kleisli.functor.functor
+import arrow.instances.kleisli.monad.monad
 import arrow.typeclasses.Applicative
 import arrow.typeclasses.ApplicativeError
 import arrow.typeclasses.Conested
@@ -111,34 +111,6 @@ interface KleisliMonadErrorInstance<F, D, E> : MonadError<KleisliPartialOf<F, D>
   override fun AE(): ApplicativeError<F, E> = ME()
 
   override fun AF(): Applicative<F> = ME()
-}
-
-@extension
-interface KleisliBracketInstance<F, R, E> : Bracket<KleisliPartialOf<F, R>, E>, KleisliMonadErrorInstance<F, R, E> {
-
-  override fun FF(): Bracket<F, E>
-
-  override fun <A, B> Kind<KleisliPartialOf<F, R>, A>.flatMap(f: (A) -> Kind<KleisliPartialOf<F, R>, B>): Kleisli<F, R, B> =
-    FF().run {
-      this@flatMap.flatMap(f)
-    }
-
-  override fun <A, B> Kind<KleisliPartialOf<F, R>, A>.bracketCase(
-    use: (A) -> Kind<KleisliPartialOf<F, R>, B>,
-    release: (A, ExitCase<E>) -> Kind<KleisliPartialOf<F, R>, Unit>
-  ): Kleisli<F, R, B> =
-    FF().run {
-      Kleisli { r ->
-        this@bracketCase.fix().run(r).bracketCase({ a ->
-          use(a).fix().run(r)
-        }, { a, br ->
-          release(a, br).fix().run(r)
-        })
-      }
-    }
-
-  override fun <A> Kind<KleisliPartialOf<F, R>, A>.uncancelable(): Kleisli<F, R, A> =
-    Kleisli { r -> FF().run { this@uncancelable.fix().run(r).uncancelable() } }
 }
 
 /**

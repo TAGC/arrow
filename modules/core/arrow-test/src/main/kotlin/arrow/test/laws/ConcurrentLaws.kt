@@ -47,12 +47,12 @@ object ConcurrentLaws {
   fun <F> Concurrent<F>.startJoinIsIdentity(EQ: Eq<Kind<F, Int>>): Unit =
     forAll(Gen.int()) { i ->
       val fa = just(i)
-      fa.startF(Dispatchers.IO).flatMap { it.join }.equalUnderTheLaw(fa, EQ)
+      fa.startF().flatMap { it.join }.equalUnderTheLaw(fa, EQ)
     }
 
   fun <F> Concurrent<F>.startCancelIsUnit(EQ_UNIT: Eq<Kind<F, Unit>>): Unit =
     forAll(Gen.int()) { i ->
-      just(i).startF(Dispatchers.IO).flatMap { it.cancel }.equalUnderTheLaw(just(Unit), EQ_UNIT)
+      just(i).startF().flatMap { it.cancel }.equalUnderTheLaw(just(Unit), EQ_UNIT)
     }
 
   fun <F> Concurrent<F>.uncancelableMirrorsSource(EQ: Eq<Kind<F, Int>>): Unit =
@@ -63,7 +63,7 @@ object ConcurrentLaws {
   fun <F> Concurrent<F>.raceMirrorsLeftWinner(EQ: Eq<Kind<F, Int>>): Unit =
     forAll(Gen.int()) { i ->
       val fa = just(i)
-      race(Dispatchers.IO, fa, never<Int>()).flatMap { either ->
+      race(fa, never<Int>()).flatMap { either ->
         either.fold({ just(it) }, { raiseError(IllegalStateException("never() finished race")) })
       }.equalUnderTheLaw(fa, EQ)
     }
@@ -71,7 +71,7 @@ object ConcurrentLaws {
   fun <F> Concurrent<F>.raceMirrorsRightWinner(EQ: Eq<Kind<F, Int>>): Unit =
     forAll(Gen.int()) { i ->
       val fa = just(i)
-      race(Dispatchers.IO, never<Int>(), fa).flatMap { either ->
+      race(never<Int>(), fa).flatMap { either ->
         either.fold({ raiseError<Int>(IllegalStateException("never() finished race")) }, { just(it) })
       }.equalUnderTheLaw(fa, EQ)
     }
@@ -80,31 +80,31 @@ object ConcurrentLaws {
     forAll(Gen.int()) { i ->
       val fa = just(i)
       val never = never<Int>()
-      val received = racePair(Dispatchers.IO, fa, never).flatMap { either ->
+      val received = racePair(fa, never).flatMap { either ->
         either.fold({ (a, fiberB) ->
           fiberB.cancel.map { a }
         }, { raiseError(AssertionError("never() finished race")) })
       }
 
-      received.equalUnderTheLaw(race(Dispatchers.IO, fa, never).map { it.fold(::identity, ::identity) }, EQ)
+      received.equalUnderTheLaw(race(fa, never).map { it.fold(::identity, ::identity) }, EQ)
     }
 
   fun <F> Concurrent<F>.racePairMirrorsRightWinner(EQ: Eq<Kind<F, Int>>): Unit =
     forAll(Gen.int()) { i ->
       val fa = just(i)
       val never = never<Int>()
-      val received = racePair(Dispatchers.IO, never, fa).flatMap { either ->
+      val received = racePair(never, fa).flatMap { either ->
         either.fold({
           raiseError<Int>(AssertionError("never() finished race"))
         }, { (fiberA, b) -> fiberA.cancel.map { b } })
       }
 
-      received.equalUnderTheLaw(race(Dispatchers.IO, never, fa).map { it.fold(::identity, ::identity) }, EQ)
+      received.equalUnderTheLaw(race(never, fa).map { it.fold(::identity, ::identity) }, EQ)
     }
 
   fun <F> Concurrent<F>.actionConcurrentWithPureValueIsJustAction(EQ: Eq<Kind<F, Int>>): Unit =
     forAll(Gen.string(), Gen.int()) { s, i ->
-      just(s).startF(Dispatchers.IO).flatMap { (join, _) ->
+      just(s).startF().flatMap { (join, _) ->
         just(i).flatMap { x ->
           join.map { x }
         }

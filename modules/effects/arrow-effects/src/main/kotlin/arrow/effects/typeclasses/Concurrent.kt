@@ -18,8 +18,7 @@ interface Concurrent<F> : Async<F> {
       })
     }
 
-  fun <A, B> racePair(lh: Kind<F, A>, rh: Kind<F, B>): Kind<F, Either<Tuple2<A, Fiber<F, B>>, Tuple2<Fiber<F, A>, B>>> =
-    TODO()
+  fun <A, B> racePair(lh: Kind<F, A>, rh: Kind<F, B>): Kind<F, Either<Tuple2<A, Fiber<F, B>>, Tuple2<Fiber<F, A>, B>>>
 
   fun <A> cancelable(cb: ((Either<Throwable, A>) -> Unit) -> Kind<F, Unit>): Kind<F, A> =
     TODO("cancelable is derived from asyncF and from bracketCase, however it is expected to be overridden in instances for optimization purposes")

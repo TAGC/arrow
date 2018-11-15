@@ -1,12 +1,14 @@
 package arrow.effects
 
 import arrow.Kind
-import arrow.core.Either
+import arrow.core.*
 import arrow.deprecation.ExtensionsDSLDeprecated
 import arrow.effects.deferredk.applicative.applicative
+import arrow.effects.deferredk.monad.flatMap
 import arrow.effects.typeclasses.*
 import arrow.extension
 import arrow.typeclasses.*
+import kotlinx.coroutines.CoroutineStart
 import kotlin.coroutines.CoroutineContext
 import arrow.effects.handleErrorWith as deferredHandleErrorWith
 import arrow.effects.runAsync as deferredRunAsync
@@ -100,7 +102,33 @@ interface DeferredKAsyncInstance : Async<ForDeferredK>, DeferredKMonadDeferInsta
 }
 
 @extension
-interface DeferredKEffectInstance : Effect<ForDeferredK>, DeferredKAsyncInstance {
+interface DeferredKConcurrentInstance : Concurrent<ForDeferredK>, DeferredKAsyncInstance {
+
+  override fun <A> Kind<ForDeferredK, A>.startF(): Kind<ForDeferredK, Fiber<ForDeferredK, A>> {
+    val join = scope().asyncK(start = CoroutineStart.DEFAULT) { await() }
+    val cancel = DeferredK(start = CoroutineStart.LAZY) { join.cancel() }
+    return DeferredK.just(Fiber(join, cancel))
+  }
+
+  override fun <A, B> racePair(lh: Kind<ForDeferredK, A>,
+                               rh: Kind<ForDeferredK, B>): Kind<ForDeferredK, Either<Tuple2<A, Fiber<ForDeferredK, B>>, Tuple2<Fiber<ForDeferredK, A>, B>>> =
+    lh.startF().flatMap { fiberA ->
+      rh.startF().flatMap { fiberB ->
+        DeferredK.async<Either<Tuple2<A, Fiber<ForDeferredK, B>>, Tuple2<Fiber<ForDeferredK, A>, B>>> { cb ->
+          fiberA.join.fix().invokeOnCompletion { error ->
+            error?.let { cb(it.left()) } ?: cb((fiberA.join.fix().getCompleted() toT fiberB).left().right())
+          }
+          fiberB.join.fix().invokeOnCompletion { error ->
+            error?.let { cb(it.left()) } ?: cb((fiberA toT fiberB.join.fix().getCompleted()).right().right())
+          }
+        }
+      }
+    }
+
+}
+
+@extension
+interface DeferredKEffectInstance : Effect<ForDeferredK>, DeferredKConcurrentInstance {
   override fun <A> Kind<ForDeferredK, A>.runAsync(cb: (Either<Throwable, A>) -> DeferredKOf<Unit>): DeferredK<Unit> =
     fix().deferredRunAsync(cb = cb)
 }
